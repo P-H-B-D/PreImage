@@ -1,4 +1,6 @@
 # PreImage
+PreImage is a util for making lightweight python deployments simple by automatically optimizing dependency trees. 
+
 ### TODO: 
 - support for local imports (e.g. from . import file)
 - Test aliased imports (e.g. import numpy as np)
