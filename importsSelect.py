@@ -61,40 +61,61 @@ def get_package_info(import_list):
     return package_info
 
 
-def imports_from_path(target,numindent=0):
+# def imports_from_path(target,numindent=0):
 
-    import_list = get_imports(target)
-    print(numindent*"\t"+target+" imports:")
-    print(numindent*"\t"+'------------------------')
-    package_info = get_package_info(import_list)
+#     import_list = get_imports(target)
+#     print(numindent*"\t"+target+" imports:")
+#     print(numindent*"\t"+'------------------------')
+#     package_info = get_package_info(import_list)
 
-    for package_name, info in package_info.items():
-        prefix=info[0:1]
-        # print(f'{info}')
-        print(numindent*"\t"+prefix)
-        if(prefix=="D"): #Default python module
-            print(numindent*"\t"+'default python module')
-            print(numindent*"\t"+info[3:])
+#     for package_name, info in package_info.items():
+#         prefix=info[0:1]
+#         # print(f'{info}')
+#         print(numindent*"\t"+prefix)
+#         if(prefix=="D"): #Default python module
+#             print(numindent*"\t"+'default python module')
+#             print(numindent*"\t"+info[3:])
             
-        elif(prefix=="P"): #Pip package
-            print(numindent*"\t"+'pip package')
-            print(numindent*"\t"+info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
-        elif(prefix=="L"): #Local import
-            print(numindent*"\t"+'local import')
-            print(numindent*"\t"+info[3:])
-            if("." in package_name):
-                print(numindent*"\t"+os.path.abspath(package_name.split(".")[0]+".py"))
-                #should add recursion here
-                imports_from_path(os.path.abspath(package_name.split(".")[0]+".py"),numindent+1)
+#         elif(prefix=="P"): #Pip package
+#             print(numindent*"\t"+'pip package')
+#             print(numindent*"\t"+info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
+#         elif(prefix=="L"): #Local import
+#             print(numindent*"\t"+'local import')
+#             print(numindent*"\t"+info[3:])
+#             if("." in package_name):
+#                 print(numindent*"\t"+os.path.abspath(package_name.split(".")[0]+".py"))
+#                 #should add recursion here
+#                 imports_from_path(os.path.abspath(package_name.split(".")[0]+".py"),numindent+1)
 
 
+#             else:
+#                 print(numindent*"\t"+os.path.abspath(package_name))
+#         elif(prefix=="N"): #Package not found
+#             print(numindent*"\t"+'package not found')
+#         else:
+#             raise Exception("Invalid prefix")
+#         print(numindent*"\t"+'------------------------')
+
+def imports_from_path(target, numindent=0, prefix=''):
+    import_list = get_imports(target)
+    print(numindent * "\t" + prefix + target)
+    for package_name in import_list:
+        info = get_package_info([package_name])[package_name]
+        subprefix = "├─ " if package_name != import_list[-1] else "└─ "
+        subprefix += "D: " if info.startswith("D") else ""
+        subprefix += "P: " if info.startswith("P") else ""
+        subprefix += "L: " if info.startswith("L") else ""
+        subprefix += "N: " if info.startswith("N") else ""
+        print((numindent + 1) * "\t" + subprefix + package_name)
+        if info.startswith("L"):
+            if "." in package_name:
+                path = os.path.abspath(package_name.split(".")[0] + ".py")
+                imports_from_path(path, numindent + 2, "│  ")
             else:
-                print(numindent*"\t"+os.path.abspath(package_name))
-        elif(prefix=="N"): #Package not found
-            print(numindent*"\t"+'package not found')
-        else:
-            raise Exception("Invalid prefix")
-        print(numindent*"\t"+'------------------------')
+                path = os.path.abspath(package_name)
+                imports_from_path(path, numindent + 2, "│  ")
+
+    print()
 
 target="file.py"
 imports_from_path(target)
