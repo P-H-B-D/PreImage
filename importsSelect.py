@@ -1,7 +1,7 @@
 import ast
 import subprocess
 import sys
-
+import os
 #Basic import scanning. Determines if the import is a default python module, a pip package, or not found.
 
 # TODO: 
@@ -14,6 +14,12 @@ import sys
 # (e.g. from numpy import array, zeros, ones)
 # - (Later) Auto requirements.txt + dockerfile generation. If a package is imported, it should be added to the dockerfile.
 
+
+#Hierarchy of checking imports (TODO: add support for submodules in recursive import scanning case):
+# 1. Check if the import is a default python module
+# 2. Check if the import is a pip package
+# 3. Check if the import is a local import
+# Fallthrough: If none of the above, the import is not found.
 
 
 def get_imports(file_path):
@@ -33,28 +39,51 @@ def get_imports(file_path):
 
     return imports
 
+
 def get_package_info(import_list):
     package_info = {}
 
     for package_name in import_list:
         if package_name in sys.modules or package_name.split(".")[0] in sys.modules:
-            package_info[package_name] = f'Default Python module: {package_name}'
+            package_info[package_name] = f'D: {package_name}'
         else:
             result = subprocess.run(['pip3', 'show', package_name.split(".")[0]], capture_output=True, text=True)
             output = result.stdout.strip()
 
             if result.returncode == 0:
-                package_info[package_name] = output
+                package_info[package_name] = f'P: {output}' #Pip package
             else:
-                package_info[package_name] = f'Package "{package_name}" not found.'
+                #check if the import is a local import
+                print(package_name)
+                if os.path.exists(package_name.split(".")[0]+".py"):
+                    package_info[package_name] = f'L: {package_name}' #Local import 
+                else:
+                    package_info[package_name] = f'N: "{package_name}" not found.' #Package not found
 
     return package_info
 
 
 import_list = get_imports("file.py")
+print(import_list)
 package_info = get_package_info(import_list)
 
 for package_name, info in package_info.items():
-    print(f'Package: {package_name}')
-    print(info)
+    prefix=info[0:1]
+    # print(f'{info}')
+    print(prefix)
+    if(prefix=="D"): #Default python module
+        print('default python module')
+        print(info[3:])
+        
+    elif(prefix=="P"): #Pip package
+        print('pip package')
+        print(info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
+    elif(prefix=="L"): #Local import
+        print('local import')
+        print(info[3:])
+        print(os.path.abspath(package_name))
+    elif(prefix=="N"): #Package not found
+        print('package not found')
+    else:
+        raise Exception("Invalid prefix")
     print('------------------------')
