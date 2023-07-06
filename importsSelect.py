@@ -5,9 +5,9 @@ import os
 #Basic import scanning. Determines if the import is a default python module, a pip package, or not found.
 
 # TODO: 
-# - support for local imports (e.g. from . import file)
 # - Test aliased imports (e.g. import numpy as np)
 # - Support for import * (e.g. from numpy import *)
+# - Support for submodules (e.g. import numpy.linalg)
 # - Recursive import scanning from local imports (e.g. import <local_module> also should scan <local_module> for imports and list them)
 # - (Later) Import cleanup. E.g. if a package is imported but not used, it should be removed from the import list.
 # Additionally, if a package is imported but only a subset of its functions are used, it should be changed to only import those functions. 
@@ -44,7 +44,7 @@ def get_package_info(import_list):
     package_info = {}
 
     for package_name in import_list:
-        if package_name in sys.modules or package_name.split(".")[0] in sys.modules:
+        if package_name in sys.modules:
             package_info[package_name] = f'D: {package_name}'
         else:
             result = subprocess.run(['pip3', 'show', package_name.split(".")[0]], capture_output=True, text=True)
@@ -61,40 +61,17 @@ def get_package_info(import_list):
     return package_info
 
 
-# def imports_from_path(target,numindent=0):
+import importlib
+import inspect
 
-#     import_list = get_imports(target)
-#     print(numindent*"\t"+target+" imports:")
-#     print(numindent*"\t"+'------------------------')
-#     package_info = get_package_info(import_list)
-
-#     for package_name, info in package_info.items():
-#         prefix=info[0:1]
-#         # print(f'{info}')
-#         print(numindent*"\t"+prefix)
-#         if(prefix=="D"): #Default python module
-#             print(numindent*"\t"+'default python module')
-#             print(numindent*"\t"+info[3:])
-            
-#         elif(prefix=="P"): #Pip package
-#             print(numindent*"\t"+'pip package')
-#             print(numindent*"\t"+info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
-#         elif(prefix=="L"): #Local import
-#             print(numindent*"\t"+'local import')
-#             print(numindent*"\t"+info[3:])
-#             if("." in package_name):
-#                 print(numindent*"\t"+os.path.abspath(package_name.split(".")[0]+".py"))
-#                 #should add recursion here
-#                 imports_from_path(os.path.abspath(package_name.split(".")[0]+".py"),numindent+1)
+def find_module_file(full_import):
+    module_name, object_name = full_import.rsplit('.', 1)
+    module = importlib.import_module(module_name)
+    obj = getattr(module, object_name)
+    file_path = inspect.getfile(obj)
+    return file_path
 
 
-#             else:
-#                 print(numindent*"\t"+os.path.abspath(package_name))
-#         elif(prefix=="N"): #Package not found
-#             print(numindent*"\t"+'package not found')
-#         else:
-#             raise Exception("Invalid prefix")
-#         print(numindent*"\t"+'------------------------')
 
 def imports_from_path(target, numindent=0, prefix=''):
     import_list = get_imports(target)
@@ -114,8 +91,18 @@ def imports_from_path(target, numindent=0, prefix=''):
             else:
                 path = os.path.abspath(package_name)
                 imports_from_path(path, numindent + 2, "│  ")
+                
+        elif(info.startswith("P")):
+            #recursive logic for pip package dependency.
+            if("." in package_name):
+                print((numindent+2)*"\t"+"│ "+info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
+                file_path = find_module_file(package_name)
+                print((numindent+2)*"\t"+file_path)
+            else:
+                print((numindent+2)*"\t"+"│ "+info.split("Location: ")[1].split("\n")[0].strip()+"/"+package_name)
+            pass
 
     print()
 
-target="file.py"
+target="/Users/pbd/Library/Python/3.9/lib/python/site-packages/flask/app.py"
 imports_from_path(target)
